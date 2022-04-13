@@ -1,9 +1,18 @@
 from rest_framework.generics import ListCreateAPIView, GenericAPIView, get_object_or_404
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
+from mptt.templatetags.mptt_tags import cache_tree_children
 
 from .models import Post, Comment
 from .serializers import PostSerializer, CommentOutputSerializer, CommentInputSerializer
+
+def recursive_build_json_from_tree(instance):
+    response = {
+        "id": instance.id,
+        "text": instance.text,
+        "children": [recursive_build_json_from_tree(child) for child in instance._cached_children]
+    }
+    return response
 
 
 class PostListCreateAPIView(ListCreateAPIView):
@@ -12,12 +21,6 @@ class PostListCreateAPIView(ListCreateAPIView):
 
 
 class CommentListCreateAPIView(ListCreateAPIView):
-
-    def get_serializer_context(self):
-        context =  super().get_serializer_context()
-        context["is_limited"] = True  # Если True, сериализатор не будет отдавать следующего child после 3 уровня вложенности
-        return context
-
     def get_serializer_class(self):
         if self.request.method == "GET":
             return CommentOutputSerializer
@@ -25,18 +28,25 @@ class CommentListCreateAPIView(ListCreateAPIView):
             return CommentInputSerializer
 
     def perform_create(self, serializer):
-        if not Post.objects.filter(id=self.kwargs["post_id"]):
+        if not Post.objects.filter(id=self.kwargs["post_id"]).exists():
             raise NotFound()
         serializer.validated_data["post_id"] = self.kwargs["post_id"]
         return super().perform_create(serializer)
 
-    def get_queryset(self):
-        post_id = self.kwargs["post_id"]
-        if not Comment.objects.filter(post_id=post_id).exists():
-            raise NotFound()
+    def get_serializer_class(self):
+        if self.request.method == "GET":
+            return CommentOutputSerializer
+        if self.request.method == "POST":
+            return CommentInputSerializer
 
-        comments = Comment.objects.filter(level=0)
-        return comments
+    def list(self, request, post_id):
+        comments = Comment.objects.filter(post_id=post_id, level=0)
+        response = []
+        for comment in comments:
+            comment = cache_tree_children(comment.get_descendants(include_self=True))
+            response.append(recursive_build_json_from_tree(comment[0]))
+
+        return Response(response, 200)
 
 
 class CommentDeepListAPIView(GenericAPIView):
