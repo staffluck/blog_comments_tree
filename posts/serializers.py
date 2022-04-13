@@ -11,12 +11,20 @@ class PostSerializer(serializers.ModelSerializer):
 
 class SubCommentSerializer(serializers.ModelSerializer):
 
+    def to_representation(self, value):
+            serializer = self.parent.parent.__class__(value, context=self.context)
+            return serializer.data
+
+class CommentOutputSerializer(serializers.ModelSerializer):
+    children = SubCommentSerializer(many=True)
+
     class Meta:
         model = Comment
         exclude = ["post", "level", "tree_id", "lft", "rght"]
 
-class CommentSerializer(serializers.ModelSerializer):
-    parent = SubCommentSerializer(many=False)
+
+
+class CommentInputSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Comment
