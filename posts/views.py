@@ -49,11 +49,12 @@ class CommentListCreateAPIView(ListCreateAPIView):
         return Response(response, 200)
 
 
-class CommentDeepListAPIView(GenericAPIView):
+class CommentGetFullTreeAPIView(GenericAPIView):
     serializer_class = CommentOutputSerializer
 
     def get(self, request, post_id, comment_id):
         comment = get_object_or_404(Comment.objects.all(), id=comment_id, post_id=post_id)
         
-        serializer = self.get_serializer(instance=comment)
-        return Response(serializer.data)
+        comment = cache_tree_children(comment.get_descendants(include_self=True))
+        tree = recursive_build_json_from_tree(comment[0])
+        return Response(tree, 200)
