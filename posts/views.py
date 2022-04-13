@@ -34,21 +34,15 @@ class CommentListCreateAPIView(ListCreateAPIView):
         post_id = self.kwargs["post_id"]
         if not Comment.objects.filter(post_id=post_id).exists():
             raise NotFound()
-        else:
-            base_q = Comment.objects.filter(post=post_id)
-            comments = base_q.filter(level=0)
-            if not comments.exists():
-                comments = base_q.filter(level=1)
-                if not comments.exists():
-                    comments = base_q.filter(level=2)
 
+        comments = Comment.objects.filter(level__gte=0, level__lte=2, parent=None)
         return comments
 
 
 class CommentDeepListAPIView(GenericAPIView):
     serializer_class = CommentOutputSerializer
 
-    def get(self, requst, post_id, comment_id):
+    def get(self, request, post_id, comment_id):
         comment = get_object_or_404(Comment.objects.all(), id=comment_id, post_id=post_id)
         
         serializer = self.get_serializer(instance=comment)
