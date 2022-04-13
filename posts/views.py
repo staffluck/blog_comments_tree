@@ -1,10 +1,11 @@
-from rest_framework.generics import ListCreateAPIView, GenericAPIView, get_object_or_404
+from rest_framework.generics import ListCreateAPIView, CreateAPIView, GenericAPIView, get_object_or_404
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 from mptt.templatetags.mptt_tags import cache_tree_children
+from drf_spectacular.utils import extend_schema
 
 from .models import Post, Comment
-from .serializers import PostSerializer, CommentOutputSerializer, CommentInputSerializer
+from .serializers import PostSerializer, CommentInputSerializer, CommentOutputSerializer
 
 def recursive_build_json_from_tree(instance):
     response = {
@@ -20,12 +21,8 @@ class PostListCreateAPIView(ListCreateAPIView):
     queryset = Post.objects.all()
 
 
-class CommentListCreateAPIView(ListCreateAPIView):
-    def get_serializer_class(self):
-        if self.request.method == "GET":
-            return CommentOutputSerializer
-        if self.request.method == "POST":
-            return CommentInputSerializer
+class CommentListCreateAPIView(CreateAPIView):
+    serializer_class = CommentInputSerializer
 
     def perform_create(self, serializer):
         if not Post.objects.filter(id=self.kwargs["post_id"]).exists():
@@ -33,13 +30,10 @@ class CommentListCreateAPIView(ListCreateAPIView):
         serializer.validated_data["post_id"] = self.kwargs["post_id"]
         return super().perform_create(serializer)
 
-    def get_serializer_class(self):
-        if self.request.method == "GET":
-            return CommentOutputSerializer
-        if self.request.method == "POST":
-            return CommentInputSerializer
-
-    def list(self, request, post_id):
+    @extend_schema(
+        responses={200: CommentOutputSerializer(many=True)}
+    )
+    def get(self, request, post_id):
         comments = Comment.objects.filter(post_id=post_id, level=0)
         response = []
         for comment in comments:
@@ -50,8 +44,10 @@ class CommentListCreateAPIView(ListCreateAPIView):
 
 
 class CommentGetFullTreeAPIView(GenericAPIView):
-    serializer_class = CommentOutputSerializer
 
+    @extend_schema(
+        responses={200: CommentOutputSerializer()}
+    )
     def get(self, request, post_id, comment_id):
         comment = get_object_or_404(Comment.objects.all(), id=comment_id, post_id=post_id)
         

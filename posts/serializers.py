@@ -10,10 +10,12 @@ class PostSerializer(serializers.ModelSerializer):
 
 
 class CommentOutputSerializer(serializers.ModelSerializer):
+    children = serializers.ListField()
 
     class Meta:
         model = Comment
-        exclude = ["post", "children", "level", "tree_id", "lft", "rght"]
+        exclude = ["post", "parent", "level", "tree_id", "lft", "rght"]
+
 
 class CommentInputSerializer(serializers.ModelSerializer):
 
