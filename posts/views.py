@@ -1,5 +1,6 @@
 from rest_framework.generics import ListCreateAPIView, GenericAPIView, get_object_or_404
 from rest_framework.exceptions import NotFound
+from rest_framework.response import Response
 
 from .models import Post, Comment
 from .serializers import PostSerializer, CommentOutputSerializer, CommentInputSerializer
@@ -48,7 +49,7 @@ class CommentDeepListAPIView(GenericAPIView):
     serializer_class = CommentOutputSerializer
 
     def get(self, requst, post_id, comment_id):
-        comment = get_object_or_404(id=comment_id, post_id=post_id)
+        comment = get_object_or_404(Comment.objects.all(), id=comment_id, post_id=post_id)
         
         serializer = self.get_serializer(instance=comment)
-        return serializer.data
+        return Response(serializer.data)
