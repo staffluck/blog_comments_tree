@@ -15,7 +15,7 @@ class CommentListCreateAPIView(ListCreateAPIView):
 
     def get_serializer_context(self):
         context =  super().get_serializer_context()
-        context["is_limited"] = True
+        context["is_limited"] = True  # Если True, сериализатор не будет отдавать следующего child после 3 уровня вложенности
         return context
 
     def get_serializer_class(self):
@@ -35,7 +35,7 @@ class CommentListCreateAPIView(ListCreateAPIView):
         if not Comment.objects.filter(post_id=post_id).exists():
             raise NotFound()
 
-        comments = Comment.objects.filter(level__gte=0, level__lte=2, parent=None)
+        comments = Comment.objects.filter(level=0)
         return comments
 
 
