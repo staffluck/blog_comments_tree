@@ -8,11 +8,11 @@ from mptt.models import MPTTModel
 from .models import Post, Comment
 from .serializers import PostSerializer, CommentInputSerializer, CommentOutputSerializer
 
-def recursive_build_json_from_tree(instance: MPTTModel, max_level=2) -> dict:  # уровень вложенности дерева начинается с 0. max_level=2 означает что вернёт вплоть до правнука
+def recursive_build_dict_tree(instance: MPTTModel, max_level=2) -> dict:  # уровень вложенности дерева начинается с 0. max_level=2 означает что вернёт вплоть до правнука
     response = {
         "id": instance.id,
         "text": instance.text,
-        "children": [recursive_build_json_from_tree(child, max_level) if instance.level <= max_level else ["..."] for child in instance._cached_children]
+        "children": [recursive_build_dict_tree(child, max_level) if instance.level <= max_level else ["..."] for child in instance._cached_children]
     }
     return response
 
@@ -42,10 +42,10 @@ class CommentListCreateAPIView(CreateAPIView):
 
         response = []
         for comment in comments_with_children:
-            response.append(recursive_build_json_from_tree(comment))
+            response.append(recursive_build_dict_tree(comment))
         for comment in comments_without_children:
             comment._cached_children = []
-            response.append(recursive_build_json_from_tree(comment))
+            response.append(recursive_build_dict_tree(comment))
         return Response(response, 200)
 
 
@@ -58,5 +58,5 @@ class CommentGetFullTreeAPIView(GenericAPIView):
         comment = get_object_or_404(Comment.objects.all(), id=comment_id, post_id=post_id)
         
         comment = cache_tree_children(comment.get_descendants(include_self=True))
-        tree = recursive_build_json_from_tree(comment[0], max_level=100)
+        tree = recursive_build_dict_tree(comment[0], max_level=100)
         return Response(tree, 200)
