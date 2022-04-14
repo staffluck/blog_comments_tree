@@ -35,14 +35,14 @@ class CommentListCreateAPIView(CreateAPIView):
         responses={200: CommentOutputSerializer(many=True)}
     )
     def get(self, request, post_id):
-        # Если у комментария нет детей, то незачем использовать метод get_descendants, который делает ещё один запрос к бд.
-        comments_with_children = Comment.objects.filter(post_id=post_id, level=0, children__isnull=False).distinct()
+        # Если у комментария нет детей, не нужно получать полное дерево и кешировать его.
+        comments_with_children_queryset = Comment.objects.filter(post_id=post_id, level=0, children__isnull=False).distinct()
+        comments_with_children = cache_tree_children(Comment.objects.get_queryset_descendants(comments_with_children_queryset, include_self=True))
         comments_without_children = Comment.objects.filter(post_id=post_id, level=0, children__isnull=True).distinct()
 
         response = []
         for comment in comments_with_children:
-            comment = cache_tree_children(comment.get_descendants(include_self=True))
-            response.append(recursive_build_json_from_tree(comment[0]))
+            response.append(recursive_build_json_from_tree(comment))
         for comment in comments_without_children:
             comment._cached_children = []
             response.append(recursive_build_json_from_tree(comment))
