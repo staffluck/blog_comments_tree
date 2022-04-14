@@ -5,7 +5,6 @@
 ```sh
 python(venv) install -r requirements.txt
 Установить переменные окружения через .env в корне проекта по шаблону .env.template
-Postman коллекция - https://dropmefiles.com/VaoJD
 ```
 
 ## Запуск
